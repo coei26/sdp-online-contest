@@ -15,15 +15,12 @@ library(RColorBrewer)
 library(extrafont) #font_import()
 
 ### IMPORTING DATA #############################################################
-original_data <- read.csv("data/original_data.csv", stringsAsFactors = FALSE)
+original_data <- read.csv("week_three_data.csv", stringsAsFactors = FALSE, fileEncoding="UTF-8-BOM")
 clean_data <- original_data
 
 clean_data <- read.csv("clean_data.csv")
 
 ### CLEANING DATA ##############################################################
-
-# changing column names
-colnames(clean_data) <- c('time', 'name', 'email', 'object', 'motivation', 'photo_link', 'photo_source', 'ailments', 'consent')
 
 # FUNCTION: filter for valid emails
 filter_valid <- function(data, pattern) {
@@ -41,15 +38,12 @@ make_col_lower <- function(data, col_names) {
   return(data)
 }
 
-#clean_data <- make_col_lower(clean_data, c("motivation", "ailments", "object"))
-
 # FUNCTION: select relevant question columns
 select_questions <- function(data, col_names) {
   data <- subset(data, select=col_names)
   return(data)
 }
 
-clean_data <- select_questions(clean_data, c("motivation", "ailments", "object"))
 
 # FUNCTION: check for misspellings
 find_typos <- function(data, data_name) {
@@ -93,7 +87,6 @@ fix_typos <- function(data, typo_list, col_names) {
   return(data)
 }
 
-clean_data <- fix_typos(clean_data, typos, c("motivation", "ailments", "object"))
 
 # FUNCTION: fix typo by index 
 replace_index_typo <- function(data, typo_list, col_names) {
@@ -103,45 +96,21 @@ replace_index_typo <- function(data, typo_list, col_names) {
   data <- replace_typo(data, typo_list, index, new_word, col_names)
 }
 
-clean_data <- replace_index_typo(clean_data, typos, c("motivation", "ailments", "object"))
-
 ### RUNNING FUNCTIONS ##########################################################
 # CLEAN DATA
 clean_data <- original_data
-colnames(clean_data) <- c('time', 'name', 'email', 'object', 'motivation', 'photo_link', 'photo_source', 'ailments', 'consent')
-clean_data <- filter_valid(clean_data, '@')
-clean_data <- select_questions(clean_data, c("motivation", "ailments", "object"))
+clean_data <- select_questions(clean_data, c("artefacts", "excavate"))
 typos_list <- find_typos(clean_data, "clean_data")
 print(typos_list)
 
-clean_data <- fix_typos(clean_data, typos_list, c("motivation", "ailments", "object"))
-clean_data <- replace_index_typo(clean_data, typos_list, c("motivation", "ailments", "object"))
+clean_data <- fix_typos(clean_data, typos_list, c("artefacts", "excavate"))
+clean_data <- replace_index_typo(clean_data, typos_list, c("artefacts", "excavate"))
 
 write.csv(clean_data, file = "clean_data.csv", row.names = FALSE)
+clean_data <- read.csv("clean_data.csv")
 # CHECKPOINT: for weird symbols 
 #clean_text <- read_lines("clean_data.csv", skip_empty_rows = TRUE)
 #check_text(clean_text, checks=c("misspelled", "non_ascii", "non_character"))
-
-# TEST DATA
-test_data <- original_data
-colnames(test_data) <- c('time', 'name', 'email', 'object', 'motivation', 'photo_link', 'photo_source', 'ailments', 'consent')
-test_data <- filter_valid(test_data, '@')
-test_data <- select_questions(test_data, c("motivation", "ailments", "object"))
-typo_test <- find_typos(test_data, "test_data")
-print(typo_test)
-
-test_data <- fix_typos(test_data, typo_test, c("motivation", "ailments", "object"))
-test_data <- replace_index_typo(test_data, typo_test, c("motivation", "ailments", "object"))
-
-write.csv(test_data, "test_data.csv", row.names=FALSE)
-# CHECKPOINT: for weird symbols 
-#test_text <- read_lines("test_data.csv", skip_empty_rows = TRUE)
-#check_text(test_text, checks=c("misspelled", "non_ascii", "non_character"))
-
-#test_data$object <- gsub("Géjou", "Gejou", test_data$object)
-#print(test_data$object)
-
-#test_cloud <- create_word_cloud2("ailments", test_data)
 
 ### CREATING FROM DATA ########################################################
 
@@ -159,7 +128,7 @@ create_word_cloud1 <- function(col, data) {
   write.csv(select_data, file=file_name, row.names=FALSE)
   text <- readLines(file_name)
   source('http://www.sthda.com/upload/rquery_wordcloud.r')
-  res<-rquery.wordcloud(text,
+  res <- rquery.wordcloud(text,
                         lang = "english",
                         min.freq = 1,
                         max.words = 200)
@@ -203,14 +172,14 @@ create_word_cloud2 <- function(col, data) {
   words <- sort(rowSums(matrix), decreasing=TRUE)
   df <- data.frame(word = names(words), freq=words)
   # making word cloud
-  png(paste0(col, "_wordcloud.png"), width=12,height=8, units='in', res=300)
+  png(paste0(col, "_wordcloud.png"), width=25,height=12, units='in', res=300)
   wordcloud(words = df$word,
             freq = df$freq,
             min.freq=1,
             max.words=200,
             random.order=FALSE,
             rot.per=0.35,
-            colors=brewer.pal(8, "Dark2"),
+            colors=brewer.pal(6, "Dark2"),
             family="Century",
             font=1,
             scale=c(8, 0.5))
@@ -237,14 +206,62 @@ create_freq_chart <- function(num, cloud, question, color) {
   
 }
 
-### EXAMPLE QUESTION: What ailments did Joseph experience, and what remedies...? #######
+### QUESTION: What do you think motivated antiquity dealers like Géjou to ###### 
+### trade ancient artefacts?
+clean_data$artefacts <- gsub(paste0('\\<', "Artefacts", '\\>'), "", clean_data$artefacts)
+artefacts_cloud2 <- create_word_cloud2("artefacts", clean_data)
+artefacts_cloud1 <- create_word_cloud1("artefacts", clean_data)
+artefacts_table <- create_freq_table(10, artefacts_cloud1)
+artefacts_chart <- create_freq_chart(10,
+                                     artefacts_cloud1,
+                                     "What motivated antiquity dealers like Géjou to trade ancient artefacts?",
+                                     "#A2352F")
 
-#word cloud, freq table, freq bar chart
-ailment_cloud2 <- create_word_cloud2("ailments", clean_data)
-ailment_cloud1 <- create_word_cloud1("ailments", clean_data)
-ailment_table <- create_freq_table(10, ailment_cloud1)
-ailment_chart <- create_freq_chart(10,
-                                   ailment_cloud1,
-                                   "What ailments did Joseph experience, and what remedies did he try to deal with these?",
-                                   "pink")
+### QUESTION: Which foreign nations have come to Iraq to excavate? #############
 
+# FUNCTION: searching for specific terms
+cell_selection <- function(search, col, data) {
+  search = paste(search, "|/UixgmJ", sep= "")
+  data <- data %>%
+    filter(str_detect(!!as.name(col), search)) %>% 
+    select(!!as.name(col))
+  return(data)
+}
+
+# FUNCTION: counting frequency of category in data
+count_frequency <- function(category) {
+  category %>% 
+    nrow()
+}
+
+germany <- cell_selection("Germany", "excavate", clean_data)
+count_germany <- count_frequency(germany)
+
+us <- cell_selection("United States", "excavate", clean_data)
+count_us <- count_frequency(us)
+
+spain <- cell_selection("Spain", "excavate", clean_data)
+count_spain <- count_frequency(spain)
+
+turkey <- cell_selection("Turkey", "excavate", clean_data)
+count_turkey <- count_frequency(turkey)
+
+italy <- cell_selection("Italy", "excavate", clean_data)
+count_italy <- count_frequency(italy)
+
+# creating new data frame
+excavating_countries <- c('Germany', 'United States', 'Turkey', 'Italy', 'Spain')
+count <- c(count_germany, count_us, count_turkey, count_italy, count_spain)
+plot_df <- data.frame(excavating_countries, count)
+
+
+# creating a bar graph
+ggplot(plot_df, aes(reorder(excavating_countries, -count), count)) +
+  geom_col(aes(fill = excavating_countries)) +
+  labs(title = "Which foreign nations came to Iraq to excavate?",
+       x = "foreign nations",
+       y = "count",
+       fill = "nations") +
+  theme(plot.title = element_text(hjust=0.5, size=17),
+        axis.title.x = element_text(size=16),
+        axis.text.x = element_text(size=14, angle=18))
